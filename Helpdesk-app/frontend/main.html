@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk - Tickets</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --muted:#6b7280; --text:#111827; --primary:#2563eb; --primary-600:#1d4ed8; --ring:#cbd5e1; --ok:#16a34a; --warn:#f59e0b; --danger:#dc2626;
+      --sidebar:#111827; --sidebar-acc:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";color:var(--text);background:var(--bg)}
+    a{color:inherit}
+    .app{min-height:100%}
+    header.header{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--ring);display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem}
+    .menu-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--ring);border-radius:8px;background:#fff;cursor:pointer}
+    .title{font-weight:700;font-size:1.05rem}
+    .layout{display:flex}
+    .sidebar{width:260px;background:var(--sidebar);color:#e5e7eb;min-height:calc(100vh - 57px)}
+    .sidebar .section{padding:1rem;border-bottom:1px solid #1f2937}
+    .sidebar h3{margin:0 0 .5rem 0;color:#cbd5e1;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+    .nav{display:flex;flex-direction:column}
+    .nav a{display:flex;align-items:center;gap:.5rem;color:#e5e7eb;text-decoration:none;padding:.6rem .75rem;border-radius:.5rem}
+    .nav a:hover{background:var(--sidebar-acc)}
+    .nav a.active{background:#374151}
+    .content{flex:1;padding:1rem;max-width:1400px;margin:0 auto}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin:1rem 0}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:10px;padding:1rem}
+    .card .n{font-size:1.6rem;font-weight:800;color:var(--primary)}
+    .card .l{color:var(--muted);font-size:.85rem}
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:1rem 0}
+    .toolbar .spacer{flex:1}
+    select,input[type="text"],input[type="number"]{height:36px;padding:.4rem .6rem;border:1px solid var(--ring);border-radius:8px;background:#fff}
+    .btn{height:36px;display:inline-flex;align-items:center;gap:.5rem;padding:0 .8rem;border:1px solid transparent;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer}
+    .btn.secondary{background:#6b7280}
+    .btn.ghost{background:#fff;color:var(--text);border-color:var(--ring)}
+    .table-wrap{background:var(--card);border:1px solid var(--ring);border-radius:10px;overflow:auto}
+    table{border-collapse:separate;border-spacing:0;width:100%;min-width:1000px}
+    thead th{position:sticky;top:0;background:#f8fafc;border-bottom:1px solid var(--ring);text-align:left;font-size:.85rem;padding:.7rem .75rem;color:#334155}
+    tbody td{border-bottom:1px solid #e5e7eb;padding:.6rem .75rem;font-size:.92rem;vertical-align:top}
+    tbody tr:hover{background:#f8fafc}
+    .badge{display:inline-block;padding:.1rem .45rem;border-radius:6px;font-size:.75rem;font-weight:600}
+    .b-low{background:#ecfdf5;color:#065f46}
+    .b-medium{background:#fffbeb;color:#92400e}
+    .b-high{background:#fef2f2;color:#991b1b}
+    .status{font-weight:600}
+    .s-abierto{color:var(--ok)}
+    .s-pendiente,.s-planificacion,.s-compras{color:var(--warn)}
+    .s-cerrado{color:var(--danger)}
+    .right{text-align:right}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:1rem;z-index:50}
+    .modal.show{display:flex}
+    .modal .box{background:#fff;border:1px solid var(--ring);border-radius:12px;width:100%;max-width:680px;max-height:85vh;overflow:auto}
+    .box-h{display:flex;align-items:center;justify-content:space-between;padding:1rem 1rem;border-bottom:1px solid var(--ring)}
+    .box-b{padding:1rem}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:.75rem}
+    .col-6{grid-column:span 6}
+    .col-12{grid-column:span 12}
+    label{display:block;font-size:.8rem;color:#374151;margin:.25rem 0}
+    textarea{min-height:90px;resize:vertical;border:1px solid var(--ring);border-radius:8px;padding:.6rem}
+
+    /* Responsive */
+    @media (max-width: 900px){
+      .sidebar{position:fixed;left:-280px;top:57px;height:calc(100vh - 57px);z-index:20;transition:left .25s}
+      .sidebar.open{left:0}
+    }
+    @media print {
+      body {
+        background: #fff;
+        font-size: 10pt;
+      }
+      .header, .sidebar, .toolbar, .cards, .menu-toggle, .btn, #btnNuevo, #btnRefrescar, .box-h button {
+        display: none !important;
+      }
+      .content {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+      }
+      .table-wrap {
+        border: none;
+        border-radius: 0;
+        overflow: visible;
+        box-shadow: none;
+      }
+      table {
+        min-width: 100%;
+        width: 100%;
+        border: 1px solid #ccc;
+      }
+      thead th {
+        background: #f0f0f0;
+        position: static;
+      }
+      tbody td, thead th {
+        padding: .4rem .5rem;
+      }
+      tbody tr {
+        page-break-inside: avoid;
+      }
+      .print-title {
+        display: block;
+        text-align: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      .layout {
+        display: block;
+      }
+      a[href]:after {
+        content: none !important;
+      }
+      .badge {
+        border: 1px solid #ccc;
+      }
+      .modal.show {
+        display: none !important;
+      }
+      .title {
+        display: block;
+        width: 100%;
+        text-align: center;
+        font-size: 1.2rem;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 1.5cm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header">
+      <button class="menu-toggle" id="menuBtn" title="Menú" onclick="togglesidebar()">☰</button>
+      <div class="title">Sistema de Helpdesk</div>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn ghost" onclick="window.print()">Imprimir</button>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="section">
+          <h3>Navegación</h3>
+          <nav class="nav" id="nav">
+            <a href="#tickets" data-target="tickets" class="active">📄 Tickets</a>
+            <a href="#estadisticas" data-target="estadisticas">📈 Estadísticas</a>
+            <a href="#usuarios" data-target="usuarios">👥 Usuarios</a>
+            <a href="#inventario" data-target="inventario">📦 Inventario</a>
+            <a href="#programacion" data-target="programacion" > Programacion</a>
+        </nav>
+        </div>
+      </aside>
+
+      <main class="content">
+        <h1 class="print-title" style="display:none">Gestor de Pedidos</h1>
+        <!-- Tickets -->
+        <section id="sec-tickets" data-sec="tickets">
+          <div class="cards">
+            <div class="card"><div class="n" id="kpiTotal">0</div><div class="l">Total</div></div>
+            <div class="card"><div class="n" id="kpiAbiertos">0</div><div class="l">Abiertos</div></div>
+           <div class="card"><div class="n" id="kpiplanificacion">0</div><div class="l">planificacion</div></div>
+           <div class="card"><div class="n" id="kpicompras">0</div><div class="l">compras</div></div>
+           <div class="card"><div class="n" id="kpiejecucion">0</div><div class="l">ejecucion</div></div>
+           <div class="card"><div class="n" id="kpicontrol">0</div><div class="l">control</div></div>
+            <div class="card"><div class="n" id="kpiCerrados">0</div><div class="l">Cerrados</div></div>
+            <div class="card"><div class="n" id="kpidescartados">0</div><div class="l">descartados</div></div>
+          </div>
+
+          <div class="toolbar">
+            <input id="fSearch" type="text" placeholder="Buscar..." />
+            <select id="fEstado">
+              <option value="">Todos los estados</option>
+              <option value="abierto">Abierto</option>
+              <option value="planificacion">Planificación</option>
+              <option value="compras">Compras</option>
+              <option value="ejecucion">Ejecución</option>
+              <option value="control">Control</option>
+              <option value="cerrado">Cerrado</option>
+              <option value="descartado">Descartado</option>
+            </select>
+            <select id="fPrioridad">
+              <option value="">Todas las prioridades</option>
+              <option value="low">Baja</option>
+              <option value="medium">Media</option>
+              <option value="high">Alta</option>
+            </select>
+            <div class="spacer"></div>
+            <button class="btn" id="btnNuevo">Nuevo Ticket</button>
+            <button class="btn secondary" id="btnRefrescar">Refrescar</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:70px">ID</th>
+                  <th>Descripción</th>
+                  <th>sector</th>
+                  <th>Sub-equipo</th>
+                  <th>Prioridad</th>
+                  <th>Responsable</th>
+                  <th>Taller</th>  
+                  <th>Tipo de Tarea</th>
+                  <th>Estado</th>
+                  <th>Solicitante</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyTickets"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Estadísticas -->
+        <section id="sec-estadisticas" data-sec="estadisticas" style="display:none">
+          <div class="cards">
+            <div class="card"><div class="n" id="statTotal">0</div><div class="l">Total</div></div>
+            <div class="card"><div class="n" id="statAbiertos">0</div><div class="l">Abiertos</div></div>
+             <div class="card"><div class="n" id="statplanificacion">0</div><div class="l">Planificación</div></div>
+            <div class="card"><div class="n" id="statcompras">0</div><div class="l">Compras</div></div>
+            <div class="card"><div class="n" id="statejecucion">0</div><div class="l">Ejecución</div></div>
+             <div class="card"><div class="n" id="statcontrol">0</div><div class="l">Control</div></div>
+            <div class="card"><div class="n" id="statCerrados">0</div><div class="l">Cerrados</div></div>
+            <div class="card"><div class="n" id="statdescartados">0</div><div class="l">Descartados</div>
+          </div>
+          <div class="card">
+            <div class="l">Este panel muestra métricas resumidas. Si existe /estadisticas en el backend, se usarán esos datos; caso contrario, se calculan en el cliente a partir de los tickets.</div>
+          </div>
+        </section>
+
+        <!-- Usuarios -->
+        <section id="sec-usuarios" data-sec="usuarios" style="display:none">
+          <div class="card"><div class="l">Usuarios del sistema</div></div>
+          <div id="usuariosGrid" class="cards"></div>
+        </section>
+
+        <!-- Inventario (placeholder) -->
+        <section id="sec-inventario" data-sec="inventario" style="display:none">
+          <div class="card"><div class="l">Inventario (en construcción)</div></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Crear Ticket -->
+  <div class="modal" id="modalTicket" aria-hidden="true">
+    <div class="box">
+      <div class="box-h">
+        <strong>Nuevo Ticket</strong>
+        <button class="menu-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div class="box-b">
+        <form id="formTicket">
+          <div class="row">
+            <div class="col-12">
+              <label for="sector">Sector</label>
+              <select id="sector" name="sector" required>
+                <option value="">Seleccionar sector</option>
+                <option value="corrugadora">Corrugadora</option>
+                <option value="ward_rdc">Ward RDC</option>
+                <option value="ward_ffg">Ward FFG</option>
+                <option value="c3000_rdc">C3000 RDC</option>
+                <option value="c2000">C2000</option>
+                <option value="cosedoras">Cosedoras</option>
+                <option value="gral_planta">Gral de Planta</option>
+                <option value="automotores">Automotores</option>
+                <option value="expedicion">Expedicion</option>
+                <option value="jumbo">Jumbo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12" id="subEquipoContainer" style="display: none; margin-top: .75rem;">
+              <label for="subEquipo">Sub-equipo</label>
+              <select id="subEquipo" name="subEquipo" required>
+                <option value="">Seleccionar sub-equipo</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <label for="tipoTarea">Tipo de tarea</label>
+              <select id="tipoTarea" name="tipoTarea" required>
+                <option value="">Seleccionar tipo</option>
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="seguridad">Seguridad</option>
+                <option value="mejora">Mejora</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <label for="parte">Parte *</label>
+              <input type="text" id="parte" name="parte" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <label for="problema">Problema *</label>
+              <textarea id="problema" name="problema" placeholder="Describa el problema detectado" required></textarea>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <label for="solicitante">Solicitante *</label>
+              <select id="solicitante" name="solicitante" required>
+                <option value="">Seleccionar solicitante</option>
+                <option value="527"> 527   AGUIRRE, DELFOR</option>
+                <option value="541">541   AGUIRRE TELLI, NICOLAS</option>
+                <option value="337">337   AILAN , MARTIN</option>
+                <option value="580">580   ALVAREZ , MYRIAM</option>
+                <option value="333">333   ALVAREZ , FAVIO</option>
+                <option value="559">559   ALVAREZ , RAMON</option>
+                <option value="108">108   ARIAS , ROBERTO</option>
+                <option value="455">455   AMAYA , NAHUEL</option>
+                <option value="546">546   AROSA, ALEJANDRO</option>
+                <option value="57">57    ARGUELLO , EMILIANO</option>
+                <option value="309">309   ARGUELLO , RICARDO</option>
+                <option value="384">384   BAEZ , MATIAS</option>
+                <option value="86">86    BALBUENA , RAMON</option>
+                <option value="43">43    BARCALA , HECTOR</option>
+                <option value="381">381   BARRIENTOS , PEDRO</option>
+                <option value="453">453   BARRIONUEVO , GERMAN</option>
+                <option value="302">302   BENITEZ , JOSE</option>
+                <option value="375">375   BELEN , DAVID</option>
+                <option value="111">111   BERNAL , ALEJANDRO</option>
+                <option value="476">476   BOGARIN , SERGIO</option>
+                <option value="460">460   BAIZ , JONATHAN</option>
+                <option value="235">235   CACERES , GABRIEL</option>
+                <option value="284">284   CACERES , HUGO</option>
+                <option value="461">461   CAMPANA, PABLO</option>
+                <option value="125">125   CANOVA , RUBEN</option>
+                <option value="77">77    CARRIZO , MANUEL</option>
+                <option value="33">33    CASCO, FERNANDO</option>
+                <option value="321">321   CASTRO , LUIS</option>
+                <option value="157">157   CHAIT , PABLO</option>
+                <option value="176">176   CHAPARRO , JUAN</option>
+                <option value="31">31    CHAVEZ, HECTOR</option>
+                <option value="63">63    CHAVEZ , HECTOR</option>
+                <option value="230">230   CORONEL , JORGE</option>
+                <option value="453">453   CRISTANTE , GERMAN</option>
+                <option value="215">215   CURIALE , GUSTAVO</option>
+                <option value="535">535   DAMIANO, HECTOR</option>
+                <option value="567">567   DIARTE, RODOLFO</option>
+                <option value="335">335   DI  MAURO, ROBERTO</option>
+                <option value="70">70    DOMINGUEZ , CARLOS</option>
+                <option value="76">76    DOMINGUEZ , ANGEL</option>
+                <option value="113">113   DOMINGUEZ , ARIEL</option>
+                <option value="261">261   DOMINGUEZ , JOSE</option>
+                <option value="90">90    DERICO , HUGO</option>
+                <option value="451">451   DUARTE , WALTER</option>
+                <option value="425">425   FABBRI , SEBASTIAN</option>
+                <option value="58">58    FERNANDEZ , OSCAR</option>
+                <option value="61">61    FERNANDEZ , RAMON</option>
+                <option value="373">373   FERNANDEZ , NICOLAS</option>
+                <option value="382">382   FERNANDEZ , EMMANUEL</option>
+                <option value="564">564   FERREIRA, LUCAS</option>
+                <option value="62">62    FLORES , VICTOR</option>
+                <option value="519">519   FONSECA , MATIAS</option>
+                <option value="502">502   FONTANA , DANIEL</option>
+                <option value="552">552   FRANCO, CARLOS</option>
+                <option value="366">366   FRANCO , PEDRO</option>
+                <option value="268">268   GAMARRA , MANUEL</option>
+                <option value="100">100   GARNIER , ALFREDO</option>
+                <option value="136">136   GARCIA , CRISTIAN</option>
+                <option value="523">523   GEREZ , DAVID</option>
+                <option value="548">548   GIMENEZ, CRISTIAN</option>
+                <option value="219">219   GODOY , GUSTAVO</option>
+                <option value="55">55    GONZALEZ , MARCELINO</option>
+                <option value="102">102   GONZALEZ, LUIS</option>
+                <option value="254">254   GONZALEZ , LEONEL</option>
+                <option value="521">521   GONZALEZ , LEANDRO</option>
+                <option value="88">88    GOMEZ , GUSTAVO</option>
+                <option value="30">30    GOMEZ, JULIO</option>
+                <option value="50">50    GOMEZ, ISMAEL</option>
+                <option value="47">47    GOMEZ, WALTER</option>
+                <option value="251">251   GUZMANO , JOSE</option>
+                <option value="52">52    GUZMAN , EMILIO</option>
+                <option value="89">89    HERNANDEZ , GUSTAVO</option>
+                <option value="1955">1955   HERMOSID , BAUTISTA</option>
+                <option value="96">96    HERMOSID , CARLOS</option>
+                <option value="363">363   HEINZE , WALTER</option>
+                <option value="208">208   HUMERES , DIEGO</option>
+                <option value="79">79    IBAÑEZ , ENZO</option>
+                <option value="72">72    IÑIGUEZ , FERNANDO</option>
+                <option value="275">275   JUAREZ , MATIAS</option>
+                <option value="32">32    JUAREZ , HECTOR</option>
+                <option value="60">60    KLACZYNSKI , JULIO</option>
+                <option value="467">467   LARRAN , ADRIAN</option>
+                <option value="458">458   LEON ,  ZAMBRANA</option>
+                <option value="325">325   LEONI , CARLOS</option>
+                <option value="158">158   LEMOS , RAUL</option>
+                <option value="569">569   LEMOS, ALEJANDRO</option>
+                <option value="577">577   LEMOS, DIEGO</option>
+                <option value="27">27    LEIVA , WALTER</option>
+                <option value="575">575   LESME, LUCIO</option>
+                <option value="578">578   LUCERO, NANCY</option>
+                <option value="424">424   LUGO , JOSE</option>
+                <option value="87">87    MAIDANA , ROQUE</option>
+                <option value="66">66    MARIN , JUAN</option>
+                <option value="457">457   MARTINEZ , SEBASTIAN</option>
+                <option value="78">78    MENDIETA , MARCELO</option>
+                <option value="590">590   MENDOZA , ULISES</option>
+                <option value="12">12    MESSERE , PASCUAL</option>
+                <option value="180">180   MIGLIAVACA , LUCIANO</option>
+                <option value="216">216   MOHAMED , MATIAS</option>
+                <option value="376">376   MONTENEGRO , LEONARDO</option>
+                <option value="201">201   MOREIRA , RAMON</option>
+                <option value="343">343   NOGALES , ROCHA</option>
+                <option value="401">401   OCHOA , MARIANO</option>
+                <option value="353">353   OCHOA , FERNANDO</option>
+                <option value="114">114   ORUE , FRANCISCO</option>
+                <option value="109">109   ORUE , GERMAN</option>
+                <option value="243">243   ORTIZ , ABEL</option>
+                <option value="144">144   OSSO , DANIEL</option>
+                <option value="532">532   OVELAR, ENRIQUE</option>
+                <option value="92">92    PALAVECINO , OMAR</option>
+                <option value="118">118   PALAVECINO , EVER</option>
+                <option value="138">138   PAZ , GABRIEL</option>
+                <option value="103">103   PAZ , WALTER</option>
+                <option value="350">350   PERALTA , MATIAS</option>
+                <option value="133">133   PEREZ , JUAN</option>
+                <option value="431">431   PEREZ , HUGO</option>
+                <option value="495">495   PEREZ , CRISTIAN</option>
+                <option value="544">544   PEREYRA, ANGEL</option>
+                <option value="512">512   PEREYRA , DIEGO</option>
+                <option value="589">589   PEREYRA , HERNAN</option>
+                <option value="141">141   PETTERSEN , ANGEL</option>
+                <option value="591">591   POLO, Jonathan </option>
+                <option value="354">354   POBLETE , LISANDRO</option>
+                <option value="346">346   PORCEL , LUIS</option>
+                <option value="487">487   POVESI , CRISTIAN</option>
+                <option value="365">365   PRIETO , DAVID</option>
+                <option value="556">556   PUEBLAS, MARIO</option>
+                <option value="97">97    QUINTANA , HUGO</option>
+                <option value="282">282   QUIROGA , WALTER</option>
+                <option value="529">529   QUIROZ, GERMAN</option>
+                <option value="488">488   RAFFIN , SANTIAGO</option>
+                <option value="191">191   RAMIREZ , PABLO</option>
+                <option value="201">201   REINOSO , SERGIO</option>
+                <option value="115">115   RIOS , ORLANDO</option>
+                <option value="398">398   RIOS , GUILLERMO</option>
+                <option value="59">59    VARGAS , JORGE</option>
+                <option value="120">120   VARGAS , NELSON</option>
+                <option value="116">116   RIVADENEIRA , LUCIO</option>
+                <option value="67">67    RIVAS , HECTOR</option>
+                <option value="139">139   RODRIGUEZ , GARAY</option>
+                <option value="367">367   RODRIGUEZ , DIEGO</option>
+                <option value="379">379   RODRIGUEZ , ISIDRO</option>
+                <option value="571">571   RODRIGUEZ , SERGIO</option>
+                <option value="222">222   RODRIGUEZ , PABLO</option>
+                <option value="422">422   RODRIGUEZ , JONATAN</option>
+                <option value="471">471   ROJAS , JAVIER</option>
+                <option value="470">470   RUTELA, DAMIAN</option>
+                <option value="389">389   RUIZ , DAVID</option>
+                <option value="404">404   SANDOVAL , RODRIGO</option>
+                <option value="428">428   SANCHEZ , JAVIER</option>
+                <option value="94">94    SANCHEZ , WALTER</option>
+                <option value="173">173   SANCHEZ , JULIO</option>
+                <option value="267">267   SANCHEZ , RAUL</option>
+                <option value="584">584   SANCHEZ, FERNANDO</option>
+                <option value="473">473   SANCHEZ , LAUTARO</option>
+                <option value="237">237   SEGOVIA , SERGIO</option>
+                <option value="13">13    SAYAGO , ELENA</option>
+                <option value="357">357   SCARAFIA , ALEJANDRO</option>
+                <option value="19">19    SKUBIC , LUIS</option>
+                <option value="518">518   SICILIANO , GERMAN</option>
+                <option value="448">448   SORUCO , EDUARDO</option>
+                <option value="112">112   SOSA , DANIEL</option>
+                <option value="271">271   SUELDO , FRANCISCO</option>
+                <option value="198">198   SUAREZ , RICARDO</option>
+                <option value="362">362   TORRES , PASCUAL</option>
+                <option value="482">482   TORRES , CRISTIAN</option>
+                <option value="299">299   TRULLET , DANIEL</option>
+                <option value="130">130   TULA , JESUS</option>
+                <option value="1">1     TERCERO</option>
+                <option value="349">349   TEVES , LUIS</option>
+                <option value="332">332   TIVERON , JOSE</option>
+                <option value="447">447   VERA , GABRIEL</option>
+                <option value="348">348   VERA , OMAR</option>
+                <option value="156">156   VALERIO , HECTOR</option>
+                <option value="272">272   VALDEZ , JUAN</option>
+                <option value="107">107   VALLEJOS , JUAN</option>
+                <option value="59">59    VARGAS , JORGE</option>
+                <option value="291">291   VILLALBA , MANUEL</option>
+                <option value="51">51    VILLALBA , MARIO</option>
+                <option value="49">49    VILLALBA, SILVANO</option>
+                <option value="525">525   VIDELA , MARIANO</option>
+                <option value="586">586   ZAVALA , ESTEBAN</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem">
+              <button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button>
+              <button type="submit" class="btn">Guardar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Sidebar toggle (responsive)
+    const sidebar = document.getElementById('sidebar');
+    document.getElementById('menuBtn').addEventListener('click', () => sidebar.classList.toggle('open'));
+
+    // Simple router for sections
+    const nav = document.getElementById('nav');
+    nav.addEventListener('click', (e) => {
+      const a = e.target.closest('a');
+      if(!a) return;
+      e.preventDefault();
+      const target = a.getAttribute('data-target');
+      switchSection(target);
+      [...nav.querySelectorAll('a')].forEach(x=>x.classList.remove('active'));
+      a.classList.add('active');
+      sidebar.classList.remove('open');
+    });
+
+    function switchSection(target){
+      for(const sec of document.querySelectorAll('[data-sec]')){
+        sec.style.display = sec.getAttribute('data-sec') === target ? '' : 'none';
+      }
+      if(target==='usuarios') loadUsuarios();
+      if(target==='estadisticas') syncStatsPanel();
+    }
+
+    // API discovery and helpers
+    const CANDIDATE_TICKETS_LIST = [
+      '/tickets', '/tickets/', 'http://127.0.0.1:5000/tickets', 'http://127.0.0.1:5000/tickets/'
+    ];
+    const CANDIDATE_TICKETS_CREATE = ['/nuevo','/create','']; // appended to base
+
+    async function findTicketsBase(){
+      const cached = localStorage.getItem('ticketsBase');
+      if(cached) return cached;
+      for(const base of CANDIDATE_TICKETS_LIST){
+        try{
+          const url = base;
+          const res = await fetch(url, {method:'GET'});
+          if(res.ok){
+            const data = await res.json();
+            if(Array.isArray(data)){
+              localStorage.setItem('ticketsBase', base.replace(/\/$/, ''));
+              return base.replace(/\/$/, '');
+            }
+          }
+        }catch(_){/* try next */}
+      }
+      throw new Error('No se pudo localizar el endpoint de tickets. Asegúrate de ejecutar el backend y acceder a este HTML servido desde el mismo origen.');
+    }
+
+    async function apiListTickets(){
+      const base = await findTicketsBase();
+      const res = await fetch(base, {method:'GET'});
+      if(!res.ok) throw new Error('Error al obtener tickets');
+      return res.json();
+    }
+
+    async function apiCreateTicket(payload){
+      const base = await findTicketsBase();
+      let lastErr;
+      for(const suffix of CANDIDATE_TICKETS_CREATE){
+        const url = base + (suffix ? ('/'+suffix.replace(/^\//,'')) : '/nuevo');
+        try{
+          const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+          if(res.ok || res.status===201) return await res.json().catch(()=>({ok:true}));
+          lastErr = new Error('HTTP '+res.status);
+        }catch(e){ lastErr = e; }
+      }
+      throw lastErr || new Error('No se pudo crear el ticket');
+    }
+
+    // Data and rendering
+    let TICKETS = [];
+
+    function renderTickets(){
+      const tbody = document.getElementById('tbodyTickets');
+      const q = (document.getElementById('fSearch').value||'').toLowerCase();
+      const e = document.getElementById('fEstado').value;
+      const p = document.getElementById('fPrioridad').value;
+      const rows = [];
+      for(const t of TICKETS){
+        if(e && (t.estado||'').toLowerCase()!==e) continue;
+        if(p && (t.prioridad||'').toLowerCase()!==p) continue;
+        const texto = [t.id, t.titulo, t.descripcion, t.prioridad, t.estado, t.usuario_id, t.fecha_creacion].join(' ').toLowerCase();
+        if(q && !texto.includes(q)) continue;
+        rows.push(`<tr>
+          <td>${safe(t.id)}</td>
+          <td>${safe(t.titulo) || '-'}</td>
+          <td>${safe(t.descripcion) || '-'}</td>
+          <td>${badgePrioridad(t.prioridad)}</td>
+          <td>${badgeEstado(t.estado)}</td>
+          <td>${safe(t.usuario_id) || '-'}</td>
+          <td>${fmtFecha(t.fecha_creacion) || '-'}</td>
+        </tr>`);
+      }
+      tbody.innerHTML = rows.join('');
+      syncKpis();
+    }
+
+    function safe(v){ return (v===null||v===undefined)?'':String(v).replace(/[&<>]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[s])); }
+    function badgePrioridad(p){
+      const v = (p||'').toLowerCase();
+      if(v==='high') return `<span class="badge b-high">Alta</span>`;
+      if(v==='low') return `<span class="badge b-low">Baja</span>`;
+      return `<span class="badge b-medium">Media</span>`;
+    }
+    function badgeEstado(s){
+      const v = (s||'').toLowerCase();
+      const cls = v?('s-'+v):'';
+      const label = v? (v.charAt(0).toUpperCase()+v.slice(1).replace('_',' ')) : '-';
+      return `<span class="status ${cls}">${label}</span>`;
+    }
+    function fmtFecha(f){
+      if(!f) return '';
+      try{ const d = new Date(f); if(!isNaN(+d)) return d.toLocaleString(); }catch(_){ }
+      return String(f);
+    }
+
+    function syncKpis(){
+      const total = TICKETS.length;
+      const ab = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='abierto').length;
+      const pe = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='pendiente').length;
+      const ce = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='cerrado').length;
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiAbiertos').textContent = ab;
+      document.getElementById('kpiPendientes').textContent = pe;
+      document.getElementById('kpiCerrados').textContent = ce;
+    }
+
+    async function syncStatsPanel(){
+      // Try backend /estadisticas; fallback to local KPIs
+      try{
+        const res = await fetch('/estadisticas');
+        if(res.ok){
+          const s = await res.json();
+          document.getElementById('statTotal').textContent = s.total ?? TICKETS.length;
+          document.getElementById('statAbiertos').textContent = s.abiertos ?? TICKETS.filter(t=> (t.estado||'').toLowerCase()==='abierto').length;
+          document.getElementById('statPendientes').textContent = s.pendientes ?? TICKETS.filter(t=> (t.estado||'').toLowerCase()==='pendiente').length;
+          document.getElementById('statCerrados').textContent = s.cerrados ?? TICKETS.filter(t=> (t.estado||'').toLowerCase()==='cerrado').length;
+          return;
+        }
+      }catch(_){ }
+      // fallback
+      document.getElementById('statTotal').textContent = TICKETS.length;
+      document.getElementById('statAbiertos').textContent = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='abierto').length;
+      document.getElementById('statPendientes').textContent = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='pendiente').length;
+      document.getElementById('statCerrados').textContent = TICKETS.filter(t=> (t.estado||'').toLowerCase()==='cerrado').length;
+    }
+
+    async function loadUsuarios(){
+      const grid = document.getElementById('usuariosGrid');
+      grid.innerHTML = '<div class="card">Cargando...</div>';
+      try{
+        const res = await fetch('/usuarios');
+        if(!res.ok) throw 0;
+        const items = await res.json();
+        grid.innerHTML = items.map(u=>`<div class="card">
+          <div style="font-weight:700">${safe(u.nombre||u.name||'-')}</div>
+          <div class="l">${safe(u.email||'-')}</div>
+          <div class="l">${safe(u.rol||u.role||'')}</div>
+        </div>`).join('');
+      }catch(_){ grid.innerHTML = '<div class="card">No se pudo cargar /usuarios</div>'; }
+    }
+
+    // Modal logic
+    const subEquiposPorSector = {
+        'corrugadora':['Apilador inferior','Apilador superior','Cabezal 1','Cabezal 2','Cabezal 3','Caldera','Colero triple','Mesa de secado','Dual shear','Guillotina master','Sistema de aire comprimido','Retorno condensado','Sistema de extraccion de refile','Twin 400','Cinta transportadora','Empalmador','Precalentador','Servicio externo'],
+        'ward_rdc':['Accustak','Atadora mosca AO5','Atadora mosca AO6','Atadora transpack','Cuerpo n1','Cuerpo n2','Cuerpo n3','Cuerpo n4','Cuerpos impresores','Despaletizador','Feed max','Introductor','Load master','Sistema de aire comprimido','Sistema electrico','Sistema de lavado','Servicio externo','Sistema de extraccion de refile','Transportadores de bancales','Transportadores de entrada','Transportadores de paquetes','Troquelador'],
+        'ward_ffg':['Atadora mosca AO3','Atadora mosca AO4','Atadora mosca AO5','Colero','Counter ejector','Cuerpo n1','Cuerpo n2','Cuerpo n3','Cuerpo n4','Cuerpos impresores','Despaletizador','Feed max','Introductor','Load master','Plegador','Slotter','Sistema electrico','Sistema de extraccion de refile','Servicio externo','Transportadores bancales','Transportadores de entrada','Transportadores de paquetes','Troquelador'],
+        'c3000_rdc':['Atadora mosca','Atadora transpack','Atadora mosca AO5','Cuerpo n1','Cuerpo n2','Cuerpo n3','Cuerpo n4','Cuerpo n5','Cuerpos impresores','Despaletizador','Expedicion','Feed master','Introductor','Loadmaster','Servicio de aire comprimido','Servicio externo','Sistema de extraccion de refile','Sistema electrico','Stacker geomartin','Transportadores bancales','Transportadores de entrada','Transportadores paquetes','Troquelador'],
+        'c2000':['Atadora mosca AO3','Atadora mosca AO4','Atadora mosca AO5','Colero','Counter ejector','Cuerpo n1','Cuerpo n2','Cuerpo 3','Cuerpo n4','Cuerpos impresores','Despaletizador','Expedicion','Feed master','Introductor','Loadmaster','Plegador','Servicio aire comprimido','Servicio externo','Sistema electrico','Sistema extraccion de refile','Slotter','Transportadores de bancales','Transportadores de entrada','Transportadores paquetes'],
+        'cosedoras':['Bahmuller n1','Bahmuller n2','Bahmuller n3'],
+        'gral_planta':['Balanza de camiones','Baños','Baños exterior','Caldera','Calle de camiones','Camara de rebaje de gas','Camaras de seguridad','Cargador de baterias Hyundai','Cargador de baterias Toyota','Carro brazo','Carro NE','Carro tijera','Comedor','Compresores','Sector corrugadora','Cosedoras','Deposito de bobinas','Deposito de tintas','Dispenser','Enfardadora','Entrepiso','Estibadora','Extractan de refile','Galpon','Grabados','Grupo electrogeno','Impresoras generales','Sector jumbo','Sector laboratorio','Lavadero autoelevadores','Luces de emergencia','Montacargas "grabados"','Oficina expedicion','Oficina gerencia','Oficina produccion','Ofician diseño y desarrollo','Oficina tecnica','Oficina de ventas','Oficinas de administracion','P.A.T','Pañol','Perimetro exterior','Porton ingreso','Puertas red de agua','Red de gas','Red de incendio','Sala de bombas','Sala transformadores','Sala capacitacitacion','Sector troqueles','Sendas peatonales','Servicios','Tablero general','Taller automotores','Taller herreria','Taller electrico','Taller mecanico','Tanque principal de agua','Techo de planta','Tratamiento de afluentes','Ventiladores','Vestuarios','Vigilancia','Sistema de aire comprimido'],
+        'automotores':['Back-up','Carro pluma','Carro tijera','Caterpillar','Desmalezadora Honda 450 n3','Desmalezadora Honda 450 n4','Hyundai n24','Hyundai n25','Maximal n13','Sprinter 310','Sprinter 415','Sprinter 96','Tanque combustible','TCM FD 25 andino','TCM FD 25 n10','TCM FD 25 n2','TCM FD 25 n25','TCM FD 25 n7','TCM FD 25 n8','TCM FD 25 n9','TCM FD 45 n11','TCM FD 45 n12','TCM FD 45 n14','TCM FD 45 n25','TCM FD 45 n27','TCM FD 45 n3','TCM FD 45 n4','TCM n15','Toyota 16','Toyota 17','Toyota 18','Toyota 19','Toyota 20','Toyota 21','Toyota 22','Toyota 23'],
+        'expedicion':['Carro n.e','Cinta tranportadora','Cortinas','Mete pallets','Rodillera','Strechadora blanca','Strechadora MEGA','Zunchadora mosca'],
+        'jumbo':['Apilador','Cuerpo n1','Cuerpo n2','Cuerpos impresores','Introductor','Servicio aire comprimido','Servicio externo','Sistema electrico','Sistema extraccion refile','Slotter 1','Slotter 2','Stacker','Transportadores entradas','Transportadores paquetes','Troquelador']
+    };
+    const modal = document.getElementById('modalTicket');
+    function openModal(){ modal.classList.add('show'); modal.setAttribute('aria-hidden','false'); }
+    function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+    window.closeModal = closeModal;
+
+    // Events
+    document.getElementById('btnNuevo').addEventListener('click', ()=>{
+      openModal();
+    });
+    
+    document.getElementById('modalTicket').addEventListener('change', (e)=>{
+      if(e.target.id === 'sector'){
+        const sector = e.target.value;
+        const subEquipoContainer = document.getElementById('subEquipoContainer');
+        const subEquipoSelect = document.getElementById('subEquipo');
+        subEquipoSelect.innerHTML = '<option value="">Seleccionar sub-equipo</option>';
+        if (sector && subEquiposPorSector[sector]) {
+            subEquipoContainer.style.display = 'block';
+            subEquiposPorSector[sector].forEach(subEquipo => {
+                const option = document.createElement('option');
+                option.value = subEquipo.toLowerCase().replace(/\s+/g, '_');
+                option.textContent = subEquipo;
+                subEquipoSelect.appendChild(option);
+            });
+        } else {
+            subEquipoContainer.style.display = 'none';
+        }
+      }
+    });
+    document.getElementById('btnRefrescar').addEventListener('click', refreshTickets);
+    document.getElementById('fSearch').addEventListener('input', renderTickets);
+    document.getElementById('fEstado').addEventListener('change', renderTickets);
+    document.getElementById('fPrioridad').addEventListener('change', renderTickets);
+
+    document.getElementById('formTicket').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const payload = {
+        titulo: document.getElementById('parte').value.trim(),
+        descripcion: document.getElementById('problema').value.trim(),
+        usuario_id: Number(document.getElementById('solicitante').value),
+        sector: document.getElementById('sector').value,
+        sub_equipo: document.getElementById('subEquipo').value,
+        tipo_tarea: document.getElementById('tipoTarea').value
+      };
+      if(!payload.titulo || !payload.descripcion || !payload.usuario_id){
+        alert('Complete los campos obligatorios');
+        return;
+      }
+      try{
+        await apiCreateTicket(payload);
+        closeModal();
+        // Limpia formulario
+        document.getElementById('formTicket').reset();
+        await refreshTickets();
+        alert('Ticket creado');
+      }catch(err){
+        console.error(err);
+        alert('No se pudo crear el ticket. Verifique que el backend expone POST /tickets/nuevo y que no hay errores de CORS.');
+      }
+    });
+
+    async function refreshTickets(){
+      try{
+        const data = await apiListTickets();
+        TICKETS = Array.isArray(data)? data : [];
+        renderTickets();
+      }catch(err){
+        console.error(err);
+        alert('No se pudieron cargar los tickets. Asegúrese de que el backend esté corriendo.');
+      }
+    }
+
+    // Initial load
+    (async ()=>{
+      await refreshTickets();
+    })();
+  </script>
+</body>
+</html>
